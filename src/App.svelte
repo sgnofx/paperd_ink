@@ -1,5 +1,6 @@
 <script>
   import { shapes } from './shapes.js';  // Import shapes store
+  
   import Circle from './Circle.svelte';
   import Draggable from './Draggable.svelte';
   import Triangle from './Triangle.svelte';
@@ -31,44 +32,81 @@
     }
   });
 
-  const imageData = ctxx.getImageData(0, 0, width, height).data; 
-  console.log(imageData);
+  const imageData = ctxx.getImageData(0, 0, width, height); 
+  // console.log(imageData);
 
-  let bitmapArray = [];
-  for (let i = 0; i < imageData.length; i += 4) {
-    const r = imageData[i];
-    const g = imageData[i + 1];
-    const b = imageData[i + 2];
+  const pixels = imageData.data;
+  const arrayLength = width * height * 3;
 
-    // Convert RGB to bitmap format
-    let byte = 0;
-    if (r === 0 && g === 0 && b === 0) {
-      byte = 1;
+  // Create array for C
+  let byte = 0;
+  let bitPosition = 0;
+  let cArray = `#define image_width (${width})\n`;
+  cArray += `#define image_height (${height})\n\n`;
+  cArray += `const unsigned char img_data[] = {\n `;
+
+  for (let i = 0; i < pixels.length; i += 4) {
+    const isWhite = pixels[i] === 255 && pixels[i + 1] === 255 && pixels[i + 2] === 255;
+    
+    if (!isWhite) {
+      byte |= (1 << bitPosition);
     }
-
-    bitmapArray.push(`0x${byte.toString(16).padStart(2, '0').toUpperCase()}`);
+    
+    bitPosition++;
+    
+    if (bitPosition >= 8) {
+      cArray += `0x${byte.toString(16).toUpperCase().padStart(2, '0')}, `;
+      byte = 0;
+      bitPosition = 0;
+    }
   }
 
-  let count = 0;
-  for (let i = 0; i < bitmapArray.length; i++) {
-      if (bitmapArray[i] === '0xFF') {
-          count++;
-      }
+  if (bitPosition !== 0) {
+    cArray += `0x${byte.toString(16).toUpperCase().padStart(2, '0')}, `;
   }
-  console.log("Number of black pixels:", count);
 
-  const bitmapArrayString = bitmapArray.join(", ");
+  cArray += "};";
 
-  let mainCCode = `
-  #define youtube_logo_width (400)
-  #define youtube_logo_height (300)
+  console.log(cArray);
 
-  const unsigned char img_data[${bitmapArray.length}] = { ${bitmapArrayString} };
-
-  `;
+  // cArray += "};";
 
 
-  navigator.clipboard.writeText(mainCCode).then(function() {
+  // let bitmapArray = [];
+  // for (let i = 0; i < imageData.data.length; i += 4) {
+  //   const r = imageData.data[i];
+  //   const g = imageData.data[i + 1];
+  //   const b = imageData.data[i + 2];
+    
+  //   const grayscale = 0.3 * r + 0.59 * g + 0.11 * b;
+  //   let byte = 0;
+    
+  //   if (grayscale < 128) {  // Adjust this threshold if needed
+  //     byte = 255;  // Black
+  //   }
+  //   bitmapArray.push(`0x${byte.toString(16).padStart(2, '0').toUpperCase()}`);
+  // }  
+
+  // let count = 0;
+  // for (let i = 0; i < bitmapArray.length; i++) {
+  //     if (bitmapArray[i] === '0xFF') {
+  //         count++;
+  //     }
+  // }
+  // console.log("Number of black pixels:", count);
+
+  // const bitmapArrayString = bitmapArray.join(", ");
+
+  // let mainCCode = `
+  // #define youtube_logo_width (400)
+  // #define youtube_logo_height (300)
+
+  // const unsigned char img_data[${bitmapArray.length}] = { ${bitmapArrayString} };
+
+  // `;
+
+
+  navigator.clipboard.writeText(cArray).then(function() {
     console.log('Main C code copied to clipboard');
   }).catch(function(err) {
     console.log('Could not copy text: ', err);
