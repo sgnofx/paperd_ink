@@ -11,7 +11,6 @@ export function exportCoordinates() {
   
     ctxx.fillStyle = "#FFFFFF";
     ctxx.fillRect(0, 0, width, height);
-    console.log(shapes);
     $shapes.forEach(shape => {
         if (shape.type === 'circle') {
             // var img = document.getElementById('myImage');
@@ -30,7 +29,16 @@ export function exportCoordinates() {
             ctxx.lineTo(shape.x + 21.65, shape.y + 12.5); // Bottom right corner
             ctxx.closePath();
             ctxx.fill();
+        }else if (shape.type === 'image' && shape.url) {
+            const asDitheredImageElement = document.getElementById(shape.id);
+            if (asDitheredImageElement && asDitheredImageElement.shadowRoot) {
+                const internalCanvas = asDitheredImageElement.shadowRoot.querySelector('canvas');
+                if (internalCanvas) {
+                    ctxx.drawImage(internalCanvas, shape.x, shape.y);
+                }
+            }
         }
+
     });
   
     const imageData = ctxx.getImageData(0, 0, width, height); 
